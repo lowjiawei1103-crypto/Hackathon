@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BusGuard AI — Predictive Bus Delay & Automated Recovery Workbench</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Leaflet CSS for Map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <!-- App Custom CSS -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Top Navigation Header -->
+    <header class="navbar">
+        <div class="nav-brand">
+            <div class="logo-icon">
+                <i class="fa-solid fa-bus-simple"></i>
+            </div>
+            <div class="brand-text">
+                <h1>BusGuard <span class="badge-ai">AI</span></h1>
+                <p>Predictive Bus Delay & Automated Recovery System • Rapid KL</p>
+            </div>
+        </div>
+        <div class="nav-actions">
+            <a href="index.html" class="btn btn-primary glow-btn">
+                <i class="fa-solid fa-gauge-high"></i> Recovery Workbench
+            </a>
+            <a href="assistant.html" class="btn btn-secondary">
+                <i class="fa-solid fa-robot"></i> AI Assistant
+            </a>
+            <a href="dataset.html" class="btn btn-secondary">
+                <i class="fa-solid fa-database"></i> Dataset & Training Data
+            </a>
+            <button id="btn-run-simulation" class="btn btn-secondary">
+                <i class="fa-solid fa-bolt"></i> Auto-Simulation
+            </button>
+            <div class="status-indicator">
+                <span class="dot pulse-green"></span> Live Monitoring
+            </div>
+        </div>
+    </header>
+
+    <!-- App Container -->
+    <div class="container">
+        
+        <!-- Summary KPI Metrics Cards -->
+        <section class="kpi-grid">
+            <div class="kpi-card glass">
+                <div class="kpi-icon icon-blue"><i class="fa-solid fa-route"></i></div>
+                <div class="kpi-data">
+                    <span class="kpi-label">Active Bus Trips</span>
+                    <h3 id="kpi-total-trips">--</h3>
+                    <span class="kpi-sub"><i class="fa-solid fa-bus"></i> Rapid KL Bus Fleet</span>
+                </div>
+            </div>
+
+            <div class="kpi-card glass">
+                <div class="kpi-icon icon-red"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                <div class="kpi-data">
+                    <span class="kpi-label">Critical & High Risk Trips</span>
+                    <h3 id="kpi-risk-trips">--</h3>
+                    <span class="kpi-sub text-danger" id="kpi-risk-sub">Requires Intervention</span>
+                </div>
+            </div>
+
+            <div class="kpi-card glass">
+                <div class="kpi-icon icon-emerald"><i class="fa-solid fa-robot"></i></div>
+                <div class="kpi-data">
+                    <span class="kpi-label">Auto-Executed Actions</span>
+                    <h3 id="kpi-auto-executed">--</h3>
+                    <span class="kpi-sub text-success">Safe Confidence Threshold Met</span>
+                </div>
+            </div>
+
+            <div class="kpi-card glass">
+                <div class="kpi-icon icon-purple"><i class="fa-solid fa-clock"></i></div>
+                <div class="kpi-data">
+                    <span class="kpi-label">Total Delay Reduction</span>
+                    <h3 id="kpi-delay-saved">-- min</h3>
+                    <span class="kpi-sub text-purple">Simulated Passenger Time Saved</span>
+                </div>
+            </div>
+
+            <div class="kpi-card glass">
+                <div class="kpi-icon icon-amber"><i class="fa-solid fa-chart-line"></i></div>
+                <div class="kpi-data">
+                    <span class="kpi-label">Model Accuracy (MAE)</span>
+                    <h3 id="kpi-model-mae">-- min</h3>
+                    <span class="kpi-sub text-amber" id="kpi-precision-sub">Precision: 92%</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Navigation Tabs -->
+        <div class="tabs-bar glass">
+            <button class="tab-btn active" data-tab="tab-workbench">
+                <i class="fa-solid fa-gauge-high"></i> Recovery Workbench
+            </button>
+            <button class="tab-btn" data-tab="tab-map">
+                <i class="fa-solid fa-map-location-dot"></i> Live Route Map
+            </button>
+
+            <button class="tab-btn" data-tab="tab-metrics">
+                <i class="fa-solid fa-brain"></i> ML Model Evaluation
+            </button>
+            <button class="tab-btn" data-tab="tab-audit">
+                <i class="fa-solid fa-clipboard-list"></i> Audit Trail & History
+            </button>
+        </div>
+
+        <!-- Tab 1: Recovery Workbench -->
+        <main id="tab-workbench" class="tab-content active">
+            <div class="workbench-layout">
+                
+                <!-- Left Column: Prioritised At-Risk Trips -->
+                <div class="workbench-left glass">
+                    <div class="section-header">
+                        <h2><i class="fa-solid fa-list-ol"></i> Prioritised At-Risk Trips</h2>
+                        <div class="table-filters">
+                            <span class="filter-label">Filter Risk:</span>
+                            <select id="filter-risk" class="select-input">
+                                <option value="ALL">All Risk Levels</option>
+                                <option value="CRITICAL">Critical Only</option>
+                                <option value="HIGH">High & Critical</option>
+                                <option value="MEDIUM">Medium & Above</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Rank</th>
+                                    <th>Trip & Route</th>
+                                    <th>Predicted Delay</th>
+                                    <th>Risk Level</th>
+                                    <th>Priority</th>
+                                    <th>Execution State</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="trips-table-body">
+                                <tr>
+                                    <td colspan="7" class="loading-cell"><i class="fa-solid fa-spinner fa-spin"></i> Loading Rapid KL trip dataset...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Right Column: Recovery Detail & Intervention Control -->
+                <div class="workbench-right glass" id="trip-detail-container">
+                    <div class="placeholder-state">
+                        <i class="fa-solid fa-bus-simple placeholder-icon"></i>
+                        <h3>Select a Trip to View Recovery Plan</h3>
+                        <p>Click "Inspect" on any trip from the prioritised list to analyze predictions, candidate actions, and execute automated recovery.</p>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+
+        <!-- Tab 2: Live Route Map -->
+        <section id="tab-map" class="tab-content">
+            <div class="glass map-card">
+                <div class="section-header">
+                    <h2><i class="fa-solid fa-map-location-dot"></i> Rapid KL Klang Valley Bus Route & Delay Map</h2>
+                    <p class="section-sub">Live simulated bus positions and delay severity heat indicators across Kuala Lumpur</p>
+                </div>
+                <div id="bus-map" class="map-container"></div>
+            </div>
+        </section>
+
+        <!-- Tab 3: ML Model Evaluation -->
+        <section id="tab-metrics" class="tab-content">
+            <div class="glass metrics-card">
+                <div class="section-header">
+                    <h2><i class="fa-solid fa-brain"></i> Machine Learning Model Performance & Validation</h2>
+                    <p class="section-sub">Evaluated on Rapid KL actual vs scheduled travel timing dataset</p>
+                </div>
+
+                <div class="metrics-grid">
+                    <div class="metric-box">
+                        <span class="metric-title">Mean Absolute Error (MAE)</span>
+                        <h3 id="eval-mae">2.15 min</h3>
+                        <p class="metric-desc">Average absolute error in delay prediction</p>
+                    </div>
+                    <div class="metric-box">
+                        <span class="metric-title">Root Mean Squared Error (RMSE)</span>
+                        <h3 id="eval-rmse">2.84 min</h3>
+                        <p class="metric-desc">Penalizes larger delay prediction variance</p>
+                    </div>
+                    <div class="metric-box">
+                        <span class="metric-title">Classification Precision</span>
+                        <h3 id="eval-precision">0.92</h3>
+                        <p class="metric-desc">Accuracy of high-delay risk alerts</p>
+                    </div>
+                    <div class="metric-box">
+                        <span class="metric-title">Recall Rate</span>
+                        <h3 id="eval-recall">0.89</h3>
+                        <p class="metric-desc">Percentage of actual disruptions detected</p>
+                    </div>
+                    <div class="metric-box">
+                        <span class="metric-title">F1 Score</span>
+                        <h3 id="eval-f1">0.90</h3>
+                        <p class="metric-desc">Harmonic mean of precision & recall</p>
+                    </div>
+                </div>
+
+                <div class="confusion-matrix-container">
+                    <h3><i class="fa-solid fa-table-cells"></i> Delay Disruption Confusion Matrix</h3>
+                    <div class="cm-grid">
+                        <div class="cm-cell cm-header"></div>
+                        <div class="cm-cell cm-header">Predicted Normal</div>
+                        <div class="cm-cell cm-header">Predicted Delay</div>
+
+                        <div class="cm-cell cm-header">Actual Normal</div>
+                        <div class="cm-cell cm-tn" id="cm-tn">True Negatives (TN): --</div>
+                        <div class="cm-cell cm-fp" id="cm-fp">False Positives (FP): --</div>
+
+                        <div class="cm-cell cm-header">Actual Delay</div>
+                        <div class="cm-cell cm-fn" id="cm-fn">False Negatives (FN): --</div>
+                        <div class="cm-cell cm-tp" id="cm-tp">True Positives (TP): --</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tab 4: Audit Trail -->
+        <section id="tab-audit" class="tab-content">
+            <div class="glass audit-card">
+                <div class="section-header">
+                    <h2><i class="fa-solid fa-clipboard-list"></i> Decision & Simulation Audit Trail</h2>
+                    <p class="section-sub">Immutable log of predictions, optimiser decisions, execution approvals, and verified impact</p>
+                </div>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Audit ID</th>
+                                <th>Timestamp</th>
+                                <th>Trip & Route</th>
+                                <th>Predicted Delay</th>
+                                <th>Selected Strategy</th>
+                                <th>Execution Decision</th>
+                                <th>Status</th>
+                                <th>Delay Saved</th>
+                                <th>Rationale</th>
+                            </tr>
+                        </thead>
+                        <tbody id="audit-table-body">
+                            <tr>
+                                <td colspan="9" class="loading-cell">No audit logs recorded yet. Run simulation or execute recovery actions to view logs.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- Floating AI Assistant Chat Button -->
+    <div id="ai-chat-trigger" class="ai-chat-trigger">
+        <i class="fa-solid fa-robot"></i>
+        <span>AI Dispatch Assistant</span>
+        <span class="badge-ai">Groq LLaMA-3.3</span>
+    </div>
+
+    <!-- AI Assistant Chat Modal / Drawer -->
+    <div id="ai-chat-drawer" class="ai-chat-drawer glass">
+        <div class="ai-chat-header">
+            <div class="ai-chat-title">
+                <i class="fa-solid fa-robot icon-purple"></i>
+                <div>
+                    <h3>BusGuard AI Assistant</h3>
+                    <p>Powered by Groq LLaMA-3.3-70B • Live Operational Intelligence</p>
+                </div>
+            </div>
+            <button id="ai-chat-close" class="btn-close"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <div class="ai-chat-quick-prompts">
+            <button class="chip-prompt" onclick="sendQuickPrompt('Give me an executive summary of current high-risk delays.')">⚡ Risk Summary</button>
+            <button class="chip-prompt" onclick="sendQuickPrompt('Why is TRIP-101 heavily delayed and what is the best fix?')">🔍 Inspect TRIP-101</button>
+            <button class="chip-prompt" onclick="sendQuickPrompt('How should we adjust schedules during heavy rain?')">🌧 Rain Delay Strategy</button>
+        </div>
+
+        <div id="ai-chat-messages" class="ai-chat-messages">
+            <div class="chat-msg msg-ai">
+                <div class="msg-avatar"><i class="fa-solid fa-robot"></i></div>
+                <div class="msg-bubble">
+                    Hello Dispatcher! I am your <strong>BusGuard AI Assistant</strong> powered by Groq LLaMA-3.3. How can I assist you with Rapid KL route recovery today?
+                </div>
+            </div>
+        </div>
+
+        <div class="ai-chat-input-area">
+            <input type="text" id="ai-chat-input" placeholder="Ask AI Assistant about trips, rerouting, delay predictions..." />
+            <button id="ai-chat-send" class="btn btn-primary"><i class="fa-solid fa-paper-plane"></i></button>
+        </div>
+    </div>
+
+    <!-- Leaflet JS for Map -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Custom JS -->
+    <script src="js/app.js"></script>
+</body>
+</html>

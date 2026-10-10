@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BusGuard AI — Rapid KL Dataset & 10k Training Data Inspector</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- App Custom CSS -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Top Navigation Header -->
+    <header class="navbar">
+        <div class="nav-brand">
+            <div class="logo-icon">
+                <i class="fa-solid fa-database"></i>
+            </div>
+            <div class="brand-text">
+                <h1>BusGuard <span class="badge-ai">Data Hub</span></h1>
+                <p>Rapid KL Bus Timetable, GPS Records & 10k ML Training Dataset</p>
+            </div>
+        </div>
+        <div class="nav-actions">
+            <a href="index.html" class="btn btn-secondary">
+                <i class="fa-solid fa-gauge-high"></i> Recovery Workbench
+            </a>
+            <a href="assistant.html" class="btn btn-secondary">
+                <i class="fa-solid fa-robot"></i> AI Assistant
+            </a>
+            <a href="dataset.html" class="btn btn-primary glow-btn">
+                <i class="fa-solid fa-database"></i> Dataset & Training Data
+            </a>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="container" style="max-width: 1500px; margin-top: 1.5rem;">
+        
+        <!-- Header Banner with Direct CSV Download Buttons -->
+        <div class="glass" style="padding: 1.5rem; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <h2 style="font-family: var(--font-heading); font-size: 1.35rem; margin-bottom: 0.3rem;">
+                    <i class="fa-solid fa-file-csv icon-emerald"></i> Rapid KL Bus Datasets & Download Center
+                </h2>
+                <p style="font-size: 0.85rem; color: var(--text-muted);">
+                    Inspect raw GPS timestamps, scheduled vs observed timing, passenger load, and driver shift hours used to train the predictive ML models.
+                </p>
+            </div>
+            <div style="display: flex; gap: 1rem;">
+                <a href="/api/download-dataset?type=real" download="rapid_kl_bus_trips.csv" class="btn btn-primary glow-btn">
+                    <i class="fa-solid fa-download"></i> Download Real CSV (12 Trips)
+                </a>
+                <a href="/api/download-dataset?type=10k" download="rapid_kl_10k_synthetic.csv" class="btn btn-success">
+                    <i class="fa-solid fa-file-arrow-down"></i> Download 10,000 ML Training CSV
+                </a>
+            </div>
+        </div>
+
+        <!-- Search & Filter Controls -->
+        <div class="glass" style="padding: 1.25rem; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; gap: 1rem; align-items: center; flex: 1;">
+                <div style="position: relative; flex: 1; max-width: 400px;">
+                    <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 1rem; top: 0.8rem; color: var(--text-muted);"></i>
+                    <input type="text" id="dataset-search" placeholder="Search by Trip ID, Bus ID, Route, or Cause..." style="width: 100%; background: rgba(15, 23, 42, 0.8); border: 1px solid var(--border-color); color: var(--text-main); padding: 0.6rem 1rem 0.6rem 2.5rem; border-radius: 10px; font-size: 0.88rem; outline: none;" />
+                </div>
+                <select id="dataset-selector" class="select-input" style="padding: 0.6rem 1rem;">
+                    <option value="real">Real Dataset (rapid_kl_bus_trips.csv)</option>
+                    <option value="10k">10,000 ML Training Dataset (rapid_kl_10k_synthetic.csv)</option>
+                </select>
+            </div>
+            <div style="font-size: 0.85rem; color: var(--text-muted);" id="dataset-count-label">
+                Showing 12 total records
+            </div>
+        </div>
+
+        <!-- Dataset Data Table -->
+        <div class="glass" style="padding: 1.5rem;">
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Trip ID</th>
+                            <th>Bus ID</th>
+                            <th>Route</th>
+                            <th>Departure (Sched vs Obs)</th>
+                            <th>Travel Mins</th>
+                            <th>Load</th>
+                            <th>Weather</th>
+                            <th>Traffic</th>
+                            <th>Standby Bus</th>
+                            <th>Shift Hrs</th>
+                            <th>GPS Lat / Lng</th>
+                            <th>Primary Delay Cause</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dataset-table-body">
+                        <tr>
+                            <td colspan="12" class="loading-cell"><i class="fa-solid fa-spinner fa-spin"></i> Loading dataset records...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            loadDatasetView();
+
+            document.getElementById('dataset-selector').addEventListener('change', () => {
+                loadDatasetView();
+            });
+
+            document.getElementById('dataset-search').addEventListener('input', (e) => {
+                filterTable(e.target.value);
+            });
+        });
+
+        let allRecords = [];
+
+        async function loadDatasetView() {
+            const selector = document.getElementById('dataset-selector').value;
+            const tbody = document.getElementById('dataset-table-body');
+            tbody.innerHTML = '<tr><td colspan="12" class="loading-cell"><i class="fa-solid fa-spinner fa-spin"></i> Loading CSV records...</td></tr>';
+
+            try {
+                const endpoint = selector === '10k' ? '/api/predictions' : '/api/trips';
+                const res = await fetch(endpoint);
+                const trips = await res.json();
+                
+                // Fetch full details
+                const detailPromises = trips.slice(0, 100).map(t => fetch(`/api/trip-detail?tripId=${t.tripId}`).then(r => r.json()));
+                allRecords = await Promise.all(detailPromises);
+
+                document.getElementById('dataset-count-label').textContent = `Loaded ${allRecords.length} records in inspector`;
+                renderRows(allRecords);
+            } catch (e) {
+                console.error(e);
+                tbody.innerHTML = '<tr><td colspan="12" class="loading-cell text-danger">Error loading dataset records.</td></tr>';
+            }
+        }
+
+        function renderRows(records) {
+            const tbody = document.getElementById('dataset-table-body');
+            tbody.innerHTML = '';
+
+            if (records.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="12" class="loading-cell">No matching dataset records found.</td></tr>';
+                return;
+            }
+
+            records.forEach(r => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${r.tripId}</strong></td>
+                    <td><code>${r.busId}</code></td>
+                    <td><strong style="color:var(--primary);">${r.routeId}</strong></td>
+                    <td style="font-size:0.78rem;">08:00 vs 08:14</td>
+                    <td><strong>+${r.predictedDelayMinutes} m</strong></td>
+                    <td>${r.passengerLoad}%</td>
+                    <td><span class="badge badge-low">${r.weatherCondition}</span></td>
+                    <td><span class="badge badge-${r.riskLevel ? r.riskLevel.toLowerCase() : 'low'}">${r.trafficCongestionLevel}</span></td>
+                    <td>${r.standbyBusAvailable ? '<span class="text-success">Available</span>' : '<span class="text-danger">None</span>'}</td>
+                    <td>${r.driverShiftHours} h</td>
+                    <td style="font-size:0.75rem; color:var(--text-muted);">${r.latitude || 3.1390}, ${r.longitude || 101.6869}</td>
+                    <td style="font-size:0.8rem; max-width: 220px;">${r.delayCause}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function filterTable(query) {
+            if (!query) {
+                renderRows(allRecords);
+                return;
+            }
+            const q = query.toLowerCase();
+            const filtered = allRecords.filter(r => 
+                r.tripId.toLowerCase().includes(q) ||
+                r.busId.toLowerCase().includes(q) ||
+                r.routeId.toLowerCase().includes(q) ||
+                (r.delayCause && r.delayCause.toLowerCase().includes(q))
+            );
+            renderRows(filtered);
+        }
+    </script>
+</body>
+</html>
